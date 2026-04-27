@@ -44,7 +44,7 @@ jobs:
         run: npm run test:smoke
 
       - name: Build Windows client
-        run: npm run pack:win
+        run: npm run pack:win -- --publish never
 
       - name: Create release metadata
         id: meta
