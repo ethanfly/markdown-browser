@@ -1,0 +1,126 @@
+{
+  "name": "markdown-editor",
+  "productName": "Markdown Editor",
+  "private": false,
+  "version": "1.0.0",
+  "description": "A Typora-inspired WYSIWYG Markdown editor",
+  "author": "Markdown Editor Team",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "build:icons": "node scripts/generate-icons.js",
+    "electron": "electron .",
+    "electron:dev": "concurrently \"vite\" \"electron . --watch\"",
+    "start": "npm run build && npm run electron",
+    "pack": "npm run build && npm run build:icons && electron-builder",
+    "pack:win": "npm run build && npm run build:icons && electron-builder --win",
+    "pack:mac": "npm run build && npm run build:icons && electron-builder --mac",
+    "pack:linux": "npm run build && npm run build:icons && electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.markdown-editor.app",
+    "productName": "Markdown Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/icons/**/*",
+      "!**/node_modules/*"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown",
+        "description": "Markdown Document",
+        "role": "Editor",
+        "icon": "build/icons/icon.ico"
+      },
+      {
+        "ext": "markdown",
+        "name": "Markdown",
+        "description": "Markdown Document",
+        "role": "Editor",
+        "icon": "build/icons/icon.ico"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icons/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "build/icons/icon.icns",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "rpm"],
+      "icon": "build/icons",
+      "category": "Office",
+      "maintainer": "support@markdown-editor.app"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Markdown Editor"
+    },
+    "dmg": {
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    }
+  },
+  "dependencies": {
+    "@uiw/react-md-editor": "^4.0.0",
+    "clsx": "^2.1.0",
+    "highlight.js": "^11.9.0",
+    "lucide-react": "^0.312.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "rehype-highlight": "^7.0.0",
+    "rehype-raw": "^7.0.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "electron": "^28.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1",
+    "electron-rebuild": "^3.2.9",
+    "playwright": "^1.58.2",
+    "png-to-ico": "^3.0.1",
+    "postcss": "^8.4.32",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}

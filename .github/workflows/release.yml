@@ -1,0 +1,94 @@
+name: Build Client And Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-windows-client:
+    name: Build Windows Client
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Build renderer
+        run: npm run build
+
+      - name: Run smoke test
+        run: npm run test:smoke
+
+      - name: Build Windows client
+        run: npm run pack:win
+
+      - name: Create release metadata
+        id: meta
+        shell: pwsh
+        run: |
+          $version = node -p "require('./package.json').version"
+          $shortSha = "${{ github.sha }}".Substring(0, 7)
+          $tag = "v$version-build.${{ github.run_number }}"
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "name=Markdown Editor $version ($shortSha)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: markdown-editor-windows-${{ steps.meta.outputs.tag }}
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/win-unpacked/**
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create and push tag
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.meta.outputs.tag }}"
+          $existingTag = git ls-remote --tags origin "refs/tags/$tag"
+          if ($existingTag) {
+            Write-Host "Tag $tag already exists."
+          } else {
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag $tag "${{ github.sha }}"
+            git push origin $tag
+          }
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.meta.outputs.name }}
+          generate_release_notes: true
+          make_latest: true
+          files: |
+            release/*.exe
+            release/*.blockmap
