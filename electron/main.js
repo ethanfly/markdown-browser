@@ -30,11 +30,6 @@ const createWindow = (filePathToOpen) => {
     windowOptions.frame = false;
   }
 
-  // Pass initial file path to renderer so it can skip demo content
-  if (filePathToOpen) {
-    windowOptions.webPreferences.additionalArguments = [`--open-file=${filePathToOpen}`];
-  }
-
   // Create the browser window.
   mainWindow = new BrowserWindow(windowOptions);
 
@@ -282,6 +277,19 @@ function buildFolderRoot(folderPath) {
 }
 
 // IPC Handlers
+ipcMain.on('app:get-initial-file', (event) => {
+  if (!fileToOpen) {
+    event.returnValue = null;
+    return;
+  }
+  try {
+    event.returnValue = createFileOpenPayload(fileToOpen);
+    fileToOpen = null;
+  } catch (err) {
+    event.returnValue = { error: err.message };
+  }
+});
+
 ipcMain.handle('window:minimize', () => {
   mainWindow?.minimize();
 });

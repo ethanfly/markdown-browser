@@ -1,8 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-const initialFileArg = process.argv.find((arg) => arg.startsWith('--open-file='));
-const initialFilePath = initialFileArg ? initialFileArg.replace('--open-file=', '') : null;
-
 const on = (channel, callback) => {
   const listener = (_event, ...args) => callback(...args);
   ipcRenderer.on(channel, listener);
@@ -42,7 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onFileSaveAsPath: (callback) => on('file:save-as-path', callback),
   onFolderOpened: (callback) => on('folder:opened', callback),
 
-  initialFilePath,
+  requestInitialFile: () => ipcRenderer.sendSync('app:get-initial-file'),
 
   onMaximize: (callback) => on('window:maximized', callback),
   onUnmaximize: (callback) => on('window:unmaximized', callback),

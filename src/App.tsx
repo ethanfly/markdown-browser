@@ -259,8 +259,11 @@ function AppShell() {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // Skip demo when Electron passes an initial file (avoids flash of demo content)
-    if (window.electronAPI?.initialFilePath) return;
+    const initial = window.electronAPI?.requestInitialFile?.();
+    if (initial && !('error' in initial) && typeof initial.content === 'string') {
+      openDocument(initial.path, initial.content, initial.tree);
+      return;
+    }
 
     if (!currentFile) {
       setFileTree(demoFileTree);
@@ -271,7 +274,7 @@ function AppShell() {
         setFileContent(welcomeFile.content || '', { dirty: false });
       }
     }
-  }, [currentFile, setCurrentFile, setCurrentFilePath, setFileContent, setFileTree]);
+  }, [currentFile, openDocument, setCurrentFile, setCurrentFilePath, setFileContent, setFileTree]);
 
   useEffect(() => {
     document.title = `${isDirty ? '* ' : ''}${currentFile?.name || t('appName')}`;

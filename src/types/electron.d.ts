@@ -16,8 +16,9 @@ export interface FileOpenResult {
 }
 
 export interface ElectronAPI {
-  // Initial file passed from main process (e.g. via file association or CLI)
-  initialFilePath: string | null;
+  // Synchronously fetch the file the app was launched to open (e.g. via file
+  // association or CLI argument). Returns null if no initial file was passed.
+  requestInitialFile: () => FileOpenResult | { error: string } | null;
 
   // Window controls
   minimizeWindow: () => Promise<void>;
