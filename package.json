@@ -14,6 +14,7 @@
     "test:outline": "node scripts/test-outline.mjs",
     "test": "npm run test:md && npm run test:outline && npm run test:smoke",
     "build:icons": "node scripts/generate-icons.js",
+    "prepare:icon": "node scripts/prepare-icon.js",
     "electron": "electron .",
     "electron:dev": "concurrently \"vite\" \"electron . --watch\"",
     "start": "npm run build && npm run electron",
@@ -54,11 +55,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icons/icon.ico"
@@ -67,18 +72,28 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "build/icons/icon.icns",
       "category": "public.app-category.productivity"
     },
     "linux": {
-      "target": ["AppImage", "deb", "rpm"],
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
       "icon": "build/icons",
       "category": "Office",
       "maintainer": "support@markdown-editor.app"
@@ -92,8 +107,16 @@
     },
     "dmg": {
       "contents": [
-        { "x": 130, "y": 220 },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     }
   },
@@ -118,6 +141,7 @@
     "electron-builder": "^26.0.12",
     "electron-icon-builder": "^2.0.1",
     "electron-rebuild": "^3.2.9",
+    "jsdom": "^29.1.1",
     "playwright": "^1.58.2",
     "png-to-ico": "^3.0.1",
     "postcss": "^8.4.32",
