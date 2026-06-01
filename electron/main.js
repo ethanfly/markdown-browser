@@ -30,6 +30,11 @@ const createWindow = (filePathToOpen) => {
     windowOptions.frame = false;
   }
 
+  // Pass initial file path to renderer so it can skip demo content
+  if (filePathToOpen) {
+    windowOptions.webPreferences.additionalArguments = [`--open-file=${filePathToOpen}`];
+  }
+
   // Create the browser window.
   mainWindow = new BrowserWindow(windowOptions);
 

@@ -259,6 +259,9 @@ function AppShell() {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
+    // Skip demo when Electron passes an initial file (avoids flash of demo content)
+    if (window.electronAPI?.initialFilePath) return;
+
     if (!currentFile) {
       setFileTree(demoFileTree);
       const welcomeFile = demoFileTree[0].children?.[0];

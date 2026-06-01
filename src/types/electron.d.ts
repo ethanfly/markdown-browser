@@ -16,6 +16,9 @@ export interface FileOpenResult {
 }
 
 export interface ElectronAPI {
+  // Initial file passed from main process (e.g. via file association or CLI)
+  initialFilePath: string | null;
+
   // Window controls
   minimizeWindow: () => Promise<void>;
   maximizeWindow: () => Promise<void>;
