@@ -19,7 +19,7 @@ A **Typora-inspired** WYSIWYG Markdown editor with practical desktop file handli
 ## Typography
 **Bold text**, *italic text*, ~~strikethrough~~, ==highlighted==, \`inline code\`.
 
-You can also use ^superscript^ and ~subscript~.
+You can also use ^superscript^ and ~subscript~ — or the HTML equivalents <sup>sup</sup> and <sub>sub</sub>. A line break is just <br/> away, and inline <mark>highlighted</mark> / <kbd>Ctrl</kbd>+<kbd>S</kbd> work too.
 
 [Link example](https://example.com), reference-style links like [docs][doc], and auto-links: <https://example.com>.
 
@@ -52,6 +52,28 @@ You can also use ^superscript^ and ~subscript~.
 | Tables | ✅ | GFM with alignment |
 | Footnotes | ✅ | See [^1] |
 | Task list | ✅ | Click to toggle |
+
+### Code Blocks
+\`\`\`typescript
+interface User {
+  id: string;
+  name: string;
+  roles: Array<'admin' | 'editor'>;
+}
+
+function greet(user: User): string {
+  const greeting = user.roles.includes('admin') ? 'Welcome' : 'Hello';
+  return \`\${greeting}, \${user.name}!\`;
+}
+\`\`\`
+
+\`\`\`python
+def fib(n: int) -> list[int]:
+    a, b = 0, 1
+    for _ in range(n):
+        yield a
+        a, b = b, a + b
+\`\`\`
 
 ---
 

@@ -88,6 +88,35 @@ async function main() {
       throw new Error(`Demo table did not render expected cells. Got: ${tableText}`);
     }
 
+    // Verify the demo's fenced code block was syntax-highlighted by
+    // highlight.js (the <code> element should carry the `hljs` class and at
+    // least one token span). This proves the highlight.js integration works
+    // end-to-end through the editor's render pipeline.
+    await page.waitForFunction(() => {
+      const block = document.querySelector('[data-testid="editor"] pre.md-code-block code');
+      return !!block && block.classList.contains('hljs');
+    });
+    const codeHtml = await page.locator('[data-testid="editor"] pre.md-code-block code').first().innerHTML();
+    if (!/hljs-/.test(codeHtml)) {
+      throw new Error(`Code block was not syntax-highlighted. Got: ${codeHtml.slice(0, 200)}`);
+    }
+
+    // Verify the demo's HTML inline tags (sup / sub / kbd) survived the
+    // parse → render → display path. Each one is converted to the
+    // corresponding md-* class by expandHtmlInline().
+    const inlineTags = await page.evaluate(() => {
+      const editorElement = document.querySelector('[data-testid="editor"]');
+      return {
+        sup: !!editorElement?.querySelector('sup.md-superscript'),
+        sub: !!editorElement?.querySelector('sub.md-subscript'),
+        kbd: !!editorElement?.querySelector('code.md-code'),
+        br: (editorElement?.querySelectorAll('br').length || 0) > 0,
+      };
+    });
+    if (!inlineTags.sup || !inlineTags.sub || !inlineTags.kbd || !inlineTags.br) {
+      throw new Error(`HTML inline tags did not render correctly: ${JSON.stringify(inlineTags)}`);
+    }
+
     await editor.click();
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
     await page.keyboard.press('Backspace');

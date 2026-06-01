@@ -464,6 +464,16 @@ body {
   @apply bg-transparent p-0;
 }
 
+/* highlight.js themes — github in light mode, github-dark in dark mode.
+   The themes ship their own backgrounds so we don't set a competing
+   background on the wrapper. The !important prevents our base
+   `.md-code-block code` rule from leaking a color into highlighted tokens. */
+:root .md-code-block code.hljs,
+:root .md-code-block code[class*="language-"] {
+  background: transparent !important;
+  color: inherit;
+}
+
 .md-hr {
   @apply border-0 border-t-2 border-slate-200 dark:border-slate-700;
   @apply my-8 w-full;

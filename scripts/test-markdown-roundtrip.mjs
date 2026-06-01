@@ -50,7 +50,7 @@ const helperBlock = editorSource.slice(0, exportIdx);
 // we can dynamic-import. Strip the React / store imports at the top — those
 // are only used by the component definition which we've already cut off.
 const noImports = helperBlock.replace(/^import[\s\S]*?;\s*$/gm, '');
-const stubbed = `${noImports}\nexport { parseInlineMarkdown, parseMarkdownToHtml, htmlToMarkdown, renderTable, splitTableRow, parseTableAlignments, renderTableCell, escapeHtml, decodeEscapes, createFootnoteStore };`;
+const stubbed = `${noImports}\nexport { parseInlineMarkdown, parseMarkdownToHtml, htmlToMarkdown, renderTable, splitTableRow, parseTableAlignments, renderTableCell, escapeHtml, decodeEscapes, createFootnoteStore, expandHtmlInline };`;
 
 const result = await esbuild.build({
   stdin: { contents: stubbed, loader: 'tsx', resolveDir: __dirname },
@@ -65,7 +65,7 @@ writeFileSync(tmpPath, result.outputFiles[0].text, 'utf8');
 const mod = await import(`file://${tmpPath.replace(/\\/g, '/')}`);
 unlinkSync(tmpPath);
 
-const { parseMarkdownToHtml, htmlToMarkdown, parseInlineMarkdown, renderTable } = mod;
+const { parseMarkdownToHtml, htmlToMarkdown, parseInlineMarkdown, renderTable, expandHtmlInline } = mod;
 
 let pass = 0;
 let fail = 0;
@@ -217,6 +217,101 @@ console.log('\n== Subscript vs strikethrough ==');
   const { html } = roundTrip(md);
   assertContains(html, '<sub class="md-subscript">2</sub>', 'subscript applied');
   assertContains(html, '<del class="md-strike">deleted</del>', 'strikethrough applied');
+}
+
+console.log('\n== HTML inline tags ==');
+{
+  const md = 'Plain <sub>sub</sub> and <sup>sup</sup>, <b>bold</b> <strong>strong</strong>, <i>it</i> <em>em</em>, <del>del</del> <s>s</s>, <mark>mark</mark>, <code>code</code>, <kbd>kbd</kbd>.';
+  const { html, back } = roundTrip(md);
+  assertContains(html, '<sub class="md-subscript">sub</sub>', '<sub> → md-subscript');
+  assertContains(html, '<sup class="md-superscript">sup</sup>', '<sup> → md-superscript');
+  assertContains(html, '<strong class="md-bold">bold</strong>', '<b> → md-bold');
+  assertContains(html, '<strong class="md-bold">strong</strong>', '<strong> → md-bold');
+  assertContains(html, '<em class="md-italic">it</em>', '<i> → md-italic');
+  assertContains(html, '<em class="md-italic">em</em>', '<em> → md-italic');
+  assertContains(html, '<del class="md-strike">del</del>', '<del> → md-strike');
+  assertContains(html, '<del class="md-strike">s</del>', '<s> → md-strike');
+  assertContains(html, '<mark class="md-highlight">mark</mark>', '<mark> → md-highlight');
+  assertContains(html, '<code class="md-code">code</code>', '<code> → md-code');
+  assertContains(html, '<code class="md-code">kbd</code>', '<kbd> → md-code');
+  // Round-trip: HTML form should serialise back to the equivalent markdown.
+  assertContains(back, '~sub~', '<sub> round-trips to ~');
+  assertContains(back, '^sup^', '<sup> round-trips to ^');
+  assertContains(back, '**bold**', '<b> round-trips to **');
+  assertContains(back, '*it*', '<i> round-trips to *');
+  assertContains(back, '==mark==', '<mark> round-trips to ==');
+  assertContains(back, '`code`', '<code> round-trips to `');
+  assertContains(back, '`kbd`', '<kbd> round-trips to `');
+}
+
+console.log('\n== <br> line break ==');
+{
+  const md = 'Line one<br>Line two<br/>Line three<br />Line four.';
+  const { html, back } = roundTrip(md);
+  // <br> is treated as a soft line break: each instance produces a <br> in
+  // the rendered paragraph. We don't require exact count, just that breaks
+  // survive round-trip in some form.
+  const brCount = (html.match(/<br>/g) || []).length;
+  assert(brCount >= 3, `<br> preserved (got ${brCount} <br>, expected >= 3)`);
+  assertContains(back, 'Line one', 'first line in round-trip');
+  assertContains(back, 'Line four', 'last line in round-trip');
+}
+
+console.log('\n== Unknown HTML tag passes through as text ==');
+{
+  // A tag outside the whitelist must not be interpreted as HTML — it should
+  // be visible as literal text in the output. This protects against XSS in
+  // the editor when reading untrusted markdown.
+  const md = '<script>alert(1)</script> visible text.';
+  const { html } = roundTrip(md);
+  assert(!html.includes('<script'), 'unknown <script> tag is not rendered as HTML');
+  assertContains(html, 'visible text', 'surrounding text survives');
+}
+
+console.log('\n== Code block has data-lang for highlighter ==');
+{
+  const md = '```typescript\nconst x: number = 1;\n```';
+  const { html, back } = roundTrip(md);
+  assertContains(html, 'data-lang="typescript"', 'code block records language for highlight.js');
+  assertContains(html, 'const x: number = 1;', 'code body preserved verbatim');
+  assertContains(back, '```typescript', 'language tag round-trips');
+  assertContains(back, 'const x: number = 1;', 'code round-trips');
+}
+
+console.log('\n== Highlighted code block round-trips ==');
+{
+  // Simulate what the editor does after parseMarkdownToHtml: apply
+  // highlight.js to the <code> element, which wraps tokens in <span
+  // class="hljs-…">. The htmlToMarkdown pass should still recover the
+  // original source.
+  const dom = new JSDOM('<!doctype html><html><body></body></html>');
+  for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'HTMLDivElement', 'HTMLPreElement', 'HTMLAnchorElement', 'HTMLInputElement', 'Range', 'Selection', 'NodeFilter', 'getSelection']) {
+    if (key in dom.window && !(key in globalThis)) globalThis[key] = dom.window[key];
+  }
+  const md = '```javascript\nfunction add(a, b) { return a + b; }\n```';
+  const html = parseMarkdownToHtml(md);
+  // Apply highlight.js to the <code> block, mimicking applySyntaxHighlighting.
+  const container = dom.window.document.createElement('div');
+  container.innerHTML = html;
+  const codeEl = container.querySelector('pre.md-code-block code');
+  if (codeEl) {
+    // Synthetic tokenization — wrap a keyword and a string literal.
+    codeEl.innerHTML = '<span class="hljs-keyword">function</span> add(a, b) { <span class="hljs-keyword">return</span> a + b; }';
+    codeEl.classList.add('hljs');
+  }
+  const back = htmlToMarkdown(container.innerHTML);
+  assertContains(back, '```javascript', 'language tag survives highlight pass');
+  assertContains(back, 'function add(a, b)', 'highlighted code body round-trips');
+  assert(!back.includes('<span'), 'no HTML spans leak into the markdown output');
+}
+
+console.log('\n== expandHtmlInline idempotent on plain markdown ==');
+{
+  // Running the HTML expansion on a string that has no whitelisted HTML
+  // tags must leave it unchanged — important because parseInlineMarkdown
+  // calls expandHtmlInline on every inline pass.
+  const sample = 'Plain **bold** and `code` and a [link](https://x.com).';
+  assert(expandHtmlInline(sample) === sample, 'plain markdown is untouched by expandHtmlInline');
 }
 
 console.log('\n== Empty cell preservation ==');

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { ChevronRight as ChevronRightIcon } from 'lucide-react';
+import hljs from 'highlight.js/lib/common';
 import { useAppStore } from '../../stores/appStore';
 import { useI18n } from '../../i18n';
 import clsx from 'clsx';
@@ -325,6 +326,82 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * Sentinel used to carry `<br>` past the escapeHtml() pass. The brackets are
+ * missing so escapeHtml leaves the token alone; the inline pipeline swaps
+ * it back for a real `<br>` element at the very end of the render.
+ */
+const BR_SENTINEL = '\u0001BR\u0001';
+
+/**
+ * Convert a small whitelist of inline HTML tags to their markdown
+ * equivalents. This runs before escapeHtml() so the `<…>` characters are
+ * still literal and the conversion is unambiguous.
+ *
+ * Tags that have no markdown equivalent (e.g. `<u>`, `<small>`,
+ * `<span class="…">`) are kept as-is in the source string so the generic
+ * inline pass-through below can render them. Tags that ARE converted are
+ * listed in this map with the regex pattern that matches the open tag and
+ * the markdown syntax to substitute.
+ */
+const HTML_INLINE_TAGS: Array<{
+  /** Open tag pattern, with capture group for attributes. */
+  open: RegExp;
+  /** Close tag pattern. */
+  close: RegExp;
+  /** Replacement for the open tag, or null to drop it. */
+  openRepl: string | ((attrs: string) => string);
+  /** Replacement for the close tag, or null to drop it. */
+  closeRepl: string;
+}> = [
+  // <br>, <br/>, <br /> — preserved as a real <br> via sentinel so it
+  // survives the escapeHtml pass and round-trips back through htmlToMarkdown.
+  { open: /<br\s*\/?>/gi, close: /<\/br>/gi, openRepl: BR_SENTINEL, closeRepl: '' },
+  // <sub> -> ~
+  { open: /<sub(\s[^>]*)?>/gi, close: /<\/sub>/gi, openRepl: '~', closeRepl: '~' },
+  // <sup> -> ^
+  { open: /<sup(\s[^>]*)?>/gi, close: /<\/sup>/gi, openRepl: '^', closeRepl: '^' },
+  // <b> / <strong> -> **
+  { open: /<b(\s[^>]*)?>/gi, close: /<\/b>/gi, openRepl: '**', closeRepl: '**' },
+  {
+    open: /<strong(\s[^>]*)?>/gi,
+    close: /<\/strong>/gi,
+    openRepl: '**',
+    closeRepl: '**',
+  },
+  // <i> / <em> -> *
+  { open: /<i(\s[^>]*)?>/gi, close: /<\/i>/gi, openRepl: '*', closeRepl: '*' },
+  { open: /<em(\s[^>]*)?>/gi, close: /<\/em>/gi, openRepl: '*', closeRepl: '*' },
+  // <del> / <s> / <strike> -> ~~
+  { open: /<del(\s[^>]*)?>/gi, close: /<\/del>/gi, openRepl: '~~', closeRepl: '~~' },
+  { open: /<s(\s[^>]*)?>/gi, close: /<\/s>/gi, openRepl: '~~', closeRepl: '~~' },
+  { open: /<strike(\s[^>]*)?>/gi, close: /<\/strike>/gi, openRepl: '~~', closeRepl: '~~' },
+  // <mark> -> ==
+  { open: /<mark(\s[^>]*)?>/gi, close: /<\/mark>/gi, openRepl: '==', closeRepl: '==' },
+  // <code> -> `
+  { open: /<code(\s[^>]*)?>/gi, close: /<\/code>/gi, openRepl: '`', closeRepl: '`' },
+  // <kbd> -> `` ` `` (treated as inline code on round-trip)
+  { open: /<kbd(\s[^>]*)?>/gi, close: /<\/kbd>/gi, openRepl: '`', closeRepl: '`' },
+];
+
+/**
+ * Walk the input and replace whitelisted HTML tags with their markdown
+ * equivalents. Tags not in the whitelist are left untouched so the
+ * downstream escapeHtml() will render them as visible text — the safe
+ * behaviour for unknown markup.
+ */
+function expandHtmlInline(text: string): string {
+  let result = text;
+  for (const tag of HTML_INLINE_TAGS) {
+    result = result.replace(tag.open, (_m, attrs) => {
+      if (typeof tag.openRepl === 'function') return tag.openRepl(attrs || '');
+      return tag.openRepl;
+    });
+    result = result.replace(tag.close, tag.closeRepl);
+  }
+  return result;
+}
+
+/**
  * Footnote reference store — populated while parsing and consumed when
  * serialising back to markdown so we can write the definitions at the end of
  * the document.
@@ -372,9 +449,16 @@ function parseInlineMarkdown(
   footnotes?: FootnoteStore,
   referenceLinks?: Map<string, { url: string; title?: string }>,
 ): string {
+  // 0. Whitelisted HTML inline tags (<sub>, <br>, <b>, …) are converted to
+  //    their markdown equivalents BEFORE any other pass so the rest of the
+  //    pipeline never sees raw HTML. This must happen before code-span
+  //    extraction so that `<code>x</code>` and ``` `x` ``` both flow into
+  //    the same code renderer.
+  let working = expandHtmlInline(text);
+
   // 1. Pull out inline code spans first — content inside is never re-parsed.
   const codeSpans: string[] = [];
-  let working = text.replace(/`([^`\n]+?)`/g, (_match, code: string) => {
+  working = working.replace(/`([^`\n]+?)`/g, (_match, code: string) => {
     const idx = codeSpans.push(`<code class="md-code">${escapeHtml(code)}</code>`) - 1;
     return `\u0001CODE${idx}\u0001`;
   });
@@ -458,6 +542,10 @@ function parseInlineMarkdown(
 
   // 8. Restore code spans that we extracted in step 1/3.
   working = working.replace(/\u0001CODE(\d+)\u0001/g, (_m, idx: string) => codeSpans[Number(idx)] ?? '');
+
+  // 9. Expand <br> sentinels that expandHtmlInline stashed for us. We do
+  //    this last so the bracket characters survive escapeHtml untouched.
+  working = working.split(BR_SENTINEL).join('<br>');
 
   return working;
 }
@@ -701,11 +789,11 @@ function htmlToMarkdown(html: string): string {
       return `${term}\n: ${desc}\n\n`;
     }
 
-    if (className.includes('md-bold') || tag === 'strong') return `**${children}**`;
-    if (className.includes('md-italic') || tag === 'em') return `*${children}*`;
-    if (className.includes('md-strike') || tag === 'del') return `~~${children}~~`;
+    if (className.includes('md-bold') || tag === 'strong' || tag === 'b') return `**${children}**`;
+    if (className.includes('md-italic') || tag === 'em' || tag === 'i') return `*${children}*`;
+    if (className.includes('md-strike') || tag === 'del' || tag === 's' || tag === 'strike') return `~~${children}~~`;
     if (className.includes('md-highlight') || tag === 'mark') return `==${children}==`;
-    if (className.includes('md-code') || (tag === 'code' && !el.closest('pre'))) return `\`${children}\``;
+    if (className.includes('md-code') || tag === 'kbd' || (tag === 'code' && !el.closest('pre'))) return `\`${children}\``;
     if (className.includes('md-superscript') || tag === 'sup') return `^${children}^`;
     if (className.includes('md-subscript') || tag === 'sub') return `~${children}~`;
     if (className.includes('md-link') || tag === 'a') {
@@ -1086,6 +1174,45 @@ function getLineIndex(editor: HTMLElement, lineEl: HTMLElement | null) {
 }
 
 // ============================================
+// Syntax Highlighting
+// ============================================
+
+/**
+ * Walk the editor DOM and run highlight.js against every fenced code block.
+ * highlight.js mutates the `<code>` element in-place by wrapping tokens in
+ * `<span class="hljs-…">` and adding the `hljs` class. The wrapper spans do
+ * not break the round-trip because `htmlToMarkdown` reads the code's
+ * `textContent`, which is the original source.
+ *
+ * Unknown languages fall back to plaintext (no highlight) so the user still
+ * sees their code verbatim.
+ */
+function applySyntaxHighlighting(root: HTMLElement): void {
+  const blocks = root.querySelectorAll<HTMLElement>('pre.md-code-block code');
+  blocks.forEach((codeEl) => {
+    // Skip if already highlighted (React StrictMode invokes effects twice in
+    // dev; double-highlight would wrap spans inside spans).
+    if (codeEl.dataset.highlighted === 'yes') return;
+    const lang = (codeEl.parentElement?.getAttribute('data-lang') || '').trim();
+    try {
+      if (lang && hljs.getLanguage(lang)) {
+        hljs.highlightElement(codeEl);
+        // Override the language class highlight.js added so theme selectors
+        // can target by our attribute.
+        codeEl.classList.add(`language-${lang}`);
+      } else {
+        // No language specified / unsupported — still mark the element so we
+        // don't re-process on subsequent renders, but skip wrapping.
+        codeEl.classList.add('hljs');
+      }
+    } catch {
+      // highlightElement is best-effort; never break the editor on a
+      // malformed code block.
+    }
+  });
+}
+
+// ============================================
 // Main Editor Component
 // ============================================
 
@@ -1123,6 +1250,7 @@ export function WysiwygEditor({ className: _className }: WysiwygEditorProps) {
       if (currentMd !== fileContent) {
         editorRef.current.innerHTML = parseMarkdownToHtml(fileContent);
         syncHeadingIds(editorRef.current);
+        applySyntaxHighlighting(editorRef.current);
       }
     }
   }, [fileContent, isInternalChange]);
