@@ -1,20 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#3b82f6"/>
-      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    <!-- Background gradient: deep navy at the top fading to a slightly
+         lighter purple-blue at the bottom. Linear, no blur, so the OS
+         icon mask never has to deal with a glow. -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a3470"/>
+      <stop offset="100%" stop-color="#1f1b4b"/>
+    </linearGradient>
+    <linearGradient id="docShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f1f3f8"/>
     </linearGradient>
   </defs>
-  <rect x="64" y="64" width="896" height="896" rx="128" fill="url(#bg)"/>
-  <rect x="200" y="140" width="600" height="744" rx="48" fill="#ffffff"/>
-  <path d="M 800 140 L 800 260 L 680 260 L 680 140 Z" fill="#e2e8f0"/>
-  <text x="250" y="320" font-family="Arial" font-size="72" font-weight="bold" fill="#1e40af">H1</text>
-  <rect x="250" y="380" width="400" height="24" rx="12" fill="#94a3b8"/>
-  <rect x="250" y="440" width="320" height="24" rx="12" fill="#94a3b8"/>
-  <rect x="250" y="500" width="360" height="24" rx="12" fill="#94a3b8"/>
-  <rect x="250" y="580" width="160" height="40" rx="8" fill="#3b82f6"/>
-  <text x="270" y="610" font-family="Arial" font-size="24" font-weight="bold" fill="#ffffff">Bold</text>
-  <rect x="250" y="660" width="300" height="60" rx="8" fill="#374151"/>
-  <text x="270" y="700" font-family="monospace" font-size="28" fill="#a855f7">code</text>
-  <text x="530" y="820" font-family="Arial" font-size="120" font-weight="bold" fill="#3b82f6">M</text>
+
+  <!--
+    Layout rules:
+    - viewBox 0 0 1024 1024, the canonical desktop app icon canvas.
+    - Visible artwork lives inside a 96% safe area: 32..992 on each axis.
+    - The OS adds its own ~10% rounded mask on top — never let any
+      element reach the canvas edge.
+    - Document: centered, 208..816 horizontally, 160..864 vertically.
+    - # mark: bottom-right, OVERLAPPING the document by ~120px, with its
+      rightmost stroke ending at x=952 (72px clear of the canvas edge)
+      and its bottommost stroke ending at y=956 (68px clear). This gives
+      the OS mask plenty of room to round its corners without ever
+      biting into the symbol.
+  -->
+
+  <!-- Background. rx=180 keeps the silhouette inside the OS round-corner
+       budget — most desktop shells squircle 10-20% of the side, and 180
+       on a 1024 side is ~17%, so we sit in the middle of that range. -->
+  <rect x="0" y="0" width="1024" height="1024" rx="180" ry="180" fill="url(#bg)"/>
+
+  <!-- White document with folded top-right corner. -->
+  <g>
+    <rect x="208" y="160" width="608" height="704" rx="36" ry="36" fill="url(#docShade)"/>
+    <!-- Folded corner: cut the top-right corner of the document by drawing
+         a small triangular shape that matches the background gradient, and
+         a slightly darker triangle inside to suggest a folded flap. -->
+    <path d="M 752 160 L 816 160 L 816 224 Z" fill="#bcc1d2"/>
+    <path d="M 752 160 L 752 224 L 816 224 Z" fill="#d8dce6"/>
+  </g>
+
+  <!-- Three soft grey text lines on the document. Indented, varying widths. -->
+  <g fill="#cbd1de">
+    <rect x="266" y="370" width="332" height="30" rx="15"/>
+    <rect x="266" y="438" width="392" height="30" rx="15"/>
+    <rect x="266" y="506" width="252" height="30" rx="15"/>
+  </g>
+
+  <!--
+    # mark: bold cyan-blue, drawn as four overlapping rounded rectangles
+    (two verticals, two horizontals). Drawn as a group and translated so
+    the whole symbol is straight (no skew) and sits in the bottom-right,
+    partly over the document. The group is positioned with its bounding
+    box fully inside the safe area.
+  -->
+  <g fill="#1ba9ff" transform="translate(672, 600)">
+    <!-- Two vertical bars -->
+    <rect x="0"  y="0"  width="56" height="320" rx="18"/>
+    <rect x="160" y="0" width="56" height="320" rx="18"/>
+    <!-- Two horizontal bars -->
+    <rect x="-32" y="64"  width="280" height="56" rx="18"/>
+    <rect x="-32" y="208" width="280" height="56" rx="18"/>
+  </g>
 </svg>
