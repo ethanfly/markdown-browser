@@ -1,16 +1,20 @@
 # Markdown Editor
 
-A Typora-inspired desktop Markdown editor built with React, Vite, Tailwind CSS, and Electron.
+A Typora-inspired desktop Markdown editor built with React, Vite, Tailwind CSS, and Electron. Live block conversion, a synced sidebar file tree, a clickable outline, and a one-click Windows installer.
 
 ## Features
 
-- Typora-style writing experience with live block conversion for headings, lists, quotes, rules, and task items.
-- Real desktop file workflow: new, open, open folder, save, and save as.
-- Sidebar file tree synchronized with the folder of the opened document.
-- Clickable document outline for quick heading navigation.
-- Light, dark, and system theme modes.
-- Word count, line count, cursor position, dirty state, and UTF-8 status display.
-- Windows packaging with installer and portable client output.
+- **Typora-style WYSIWYG writing** with live block conversion for headings, lists, blockquotes, rules, and task items as you type.
+- **Full GFM coverage**: tables with alignment, footnotes, task lists, fenced code blocks, strikethrough, highlight, superscript, and subscript.
+- **Syntax highlighting** for fenced code blocks via `highlight.js` and `rehype-highlight`.
+- **Desktop file workflow**: new, open, open folder, save, save as, and double-click to open a `.md` / `.markdown` file from the OS.
+- **Sidebar file tree** synchronized with the folder of the opened document, with search and folder expand/collapse.
+- **Clickable outline** that lists headings, tables, blockquotes, code blocks, and lists, with filter and search.
+- **Light, dark, and system theme modes**, plus light/dark styles for both the editor surface and the outline panel.
+- **Status bar** with word count, line count, cursor position, dirty state, and UTF-8 status.
+- **Bilingual UI** (English and Simplified Chinese) with persistent language selection.
+- **Keyboard shortcuts** for new, open, save, save as, toggle sidebar, toggle outline, and focus mode.
+- **Settings panel** for theme, font size, font family, line height, and panel visibility.
 
 ## Tech Stack
 
@@ -18,10 +22,12 @@ A Typora-inspired desktop Markdown editor built with React, Vite, Tailwind CSS, 
 - TypeScript
 - Vite
 - Tailwind CSS
-- Zustand
-- Electron
-- electron-builder
-- Playwright smoke tests
+- Zustand (with `persist` middleware for settings)
+- Electron 28
+- electron-builder 26
+- `@uiw/react-md-editor` and a custom WYSIWYG editor
+- `rehype-raw`, `rehype-highlight`, `highlight.js`
+- Playwright (smoke tests)
 
 ## Requirements
 
@@ -36,45 +42,56 @@ Install dependencies:
 npm ci
 ```
 
-Start the web development server:
+Start the web development server (renderer only, in the browser):
 
 ```bash
 npm run dev
 ```
 
-Start the Electron app in development mode:
+Start the Electron app in development mode (Vite + Electron with hot reload):
 
 ```bash
 npm run electron:dev
 ```
 
-## Build And Test
+## Build, Test, And Package
 
-Build the renderer:
+Build the renderer (type-check + production bundle):
 
 ```bash
 npm run build
 ```
 
-Run the browser smoke test:
+Run individual test suites:
 
 ```bash
-npm run test:smoke
+npm run test:md       # Markdown round-trip tests
+npm run test:outline  # Outline extraction tests
+npm run test:smoke    # Playwright browser smoke test
 ```
 
-Generate app icons:
+Run the full test pipeline:
+
+```bash
+npm run test
+```
+
+Regenerate the application icons (used by the installers):
 
 ```bash
 npm run build:icons
 ```
 
-Build the Windows client:
+Package a desktop client for the current platform:
 
 ```bash
-npm run pack:win
+npm run pack        # auto-detect platform
+npm run pack:win    # Windows: NSIS installer + portable .exe
+npm run pack:mac    # macOS:   .dmg + .zip (x64 and arm64)
+npm run pack:linux  # Linux:   AppImage, .deb, .rpm
 ```
 
-The generated installer and portable client are written to `release/`.
+All installers, portable executables, block maps, and the unpacked app are written to `release/`.
 
 ## Release Automation
 
@@ -95,15 +112,41 @@ The workflow also supports manual runs from the GitHub Actions tab.
 
 ## Release Files
 
-Typical Windows release outputs:
+Typical Windows release outputs in `release/`:
 
-- `Markdown Editor Setup 1.0.0.exe`
-- `Markdown Editor 1.0.0.exe`
-- `Markdown Editor Setup 1.0.0.exe.blockmap`
-- `win-unpacked`
+- `Markdown Editor Setup 1.0.0.exe` — NSIS installer (x64)
+- `Markdown Editor 1.0.0.exe` — portable executable (x64)
+- `Markdown Editor Setup 1.0.0.exe.blockmap` — delta update metadata
+- `win-unpacked/` — unpacked application directory
+
+Typical macOS release outputs:
+
+- `Markdown Editor-1.0.0.dmg` (x64 and arm64)
+- `Markdown Editor-1.0.0-mac.zip` (x64 and arm64)
+
+Typical Linux release outputs:
+
+- `Markdown Editor-1.0.0.AppImage`
+- `markdown-editor_1.0.0_amd64.deb`
+- `markdown-editor-1.0.0.x86_64.rpm`
+
+## File Associations
+
+The packaged build registers the application as a handler for `.md` and `.markdown` files. On Windows, double-clicking a Markdown file opens it directly in the editor without showing the demo welcome document.
+
+## Project Layout
+
+```
+electron/        Electron main process and preload script
+src/             React renderer (App, components, hooks, stores, i18n)
+scripts/         Build, icon, and test scripts
+build/           Source icon and generated icon set
+.github/         GitHub Actions workflows
+```
 
 ## Notes
 
-- The workflow needs `contents: write` permission to create tags and releases.
+- The release workflow needs `contents: write` permission to create tags and releases.
 - If your repository only uses one default branch, keep either `main` or `master` in the workflow trigger and remove the unused branch.
 - To publish macOS or Linux clients, add separate matrix jobs that call `npm run pack:mac` or `npm run pack:linux` on the matching runner OS.
+- Settings, sidebar/outline open state, and language are persisted across sessions via `zustand/middleware` (`localStorage` key `markdown-reader-settings`).
