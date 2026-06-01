@@ -4,7 +4,6 @@ node_modules/
 # Build outputs
 dist/
 release/
-build/icons/
 
 # Test and coverage outputs
 test-artifacts/
