@@ -755,6 +755,10 @@ function htmlToMarkdown(html: string): string {
           const checked = el.getAttribute('data-checked') === 'true';
           return `- [${checked ? 'x' : ' '}] ${children}\n`;
         }
+        case 'html': {
+          // Preserve raw HTML blocks verbatim — return innerHTML directly.
+          return el.innerHTML + '\n';
+        }
         case 'p':
         default:
           return `${children}\n`;
@@ -1147,6 +1151,25 @@ function parseMarkdownToHtml(md: string): string {
         `<dl class="md-deflist"><dt class="md-def-term">${term}</dt><dd class="md-def-desc">${desc}</dd></dl>`,
       );
       i += 2;
+      continue;
+    }
+
+    // HTML block: lines starting with an opening HTML tag are emitted verbatim
+    // so that raw HTML in the markdown source is rendered as actual HTML.
+    const htmlBlockMatch = line.match(/^\s*<(p|div|span|img|a|h[1-6]|ul|ol|li|table|tr|td|th|thead|tbody|tfoot|blockquote|pre|code|em|strong|b|i|u|s|del|sub|sup|br|hr|details|summary|figure|figcaption|section|article|nav|header|footer|main|aside|video|audio|source|picture|canvas|svg|math|form|input|button|select|option|textarea|label|fieldset|legend|datalist|output|progress|meter|iframe|embed|object|param|map|area|caption|col|colgroup)(\s|>|\/>)/i);
+    if (htmlBlockMatch) {
+      // Collect consecutive HTML lines into a single block.
+      const htmlLines: string[] = [];
+      while (i < stripped.length) {
+        const cur = stripped[i];
+        // Stop at empty line or non-HTML line.
+        if (cur.trim() === '' || !cur.match(/^\s*</)) break;
+        htmlLines.push(cur);
+        i += 1;
+      }
+      // Emit the HTML block verbatim wrapped in a container div.
+      result.push(`<div class="md-line" data-type="html">${htmlLines.join('\n')}</div>`);
+      lastListKind = null;
       continue;
     }
 
