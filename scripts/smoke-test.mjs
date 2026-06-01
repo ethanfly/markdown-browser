@@ -88,6 +88,35 @@ async function main() {
       throw new Error(`Demo table did not render expected cells. Got: ${tableText}`);
     }
 
+    // Verify the outline panel now lists multiple block kinds. The demo
+    // contains headings, a table, two fenced code blocks, and lists, so the
+    // outline should surface all of them.
+    await page.waitForFunction(() => {
+      const outline = document.querySelector('[data-testid="outline"] nav');
+      return !!outline && outline.children.length > 4;
+    });
+    const outlineLabels = await page.evaluate(() => {
+      const aside = document.querySelector('[data-testid="outline"]');
+      if (!aside) return [];
+      return Array.from(aside.querySelectorAll('nav button')).map((btn) => btn.textContent || '');
+    });
+    const expectedFragments = ['Typography', 'Tables', 'Code Blocks'];
+    for (const frag of expectedFragments) {
+      if (!outlineLabels.some((label) => label.includes(frag))) {
+        throw new Error(`Outline missing entry for "${frag}". Got: ${JSON.stringify(outlineLabels)}`);
+      }
+    }
+
+    // Toggle to "Headings only" and verify the table / code blocks are
+    // hidden. This exercises the filter wiring end-to-end.
+    await page.getByTestId('outline-filter-headings').click();
+    await page.waitForFunction(() => {
+      const aside = document.querySelector('[data-testid="outline"]');
+      const labels = Array.from(aside?.querySelectorAll('nav button') || []).map((b) => b.textContent || '');
+      return labels.length > 0 && labels.every((l) => !/typescript|python code block/i.test(l));
+    });
+    await page.getByTestId('outline-filter-all').click();
+
     // Verify the demo's fenced code block was syntax-highlighted by
     // highlight.js (the <code> element should carry the `hljs` class and at
     // least one token span). This proves the highlight.js integration works

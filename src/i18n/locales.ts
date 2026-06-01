@@ -97,6 +97,10 @@ export interface LocaleStrings {
   table3x3: string;
   footnote: string;
   definitionList: string;
+  outlineAll: string;
+  outlineHeadingsOnly: string;
+  outlineSearchPlaceholder: string;
+  outlineNoMatches: string;
 }
 
 export type LocaleKey = keyof LocaleStrings;
@@ -198,6 +202,10 @@ export const enUS: LocaleStrings = {
   table3x3: '3×3 Table',
   footnote: 'Footnote',
   definitionList: 'Definition List',
+  outlineAll: 'All',
+  outlineHeadingsOnly: 'Headings',
+  outlineSearchPlaceholder: 'Search outline…',
+  outlineNoMatches: 'No matches',
 };
 
 export const zhCN: LocaleStrings = {
@@ -297,6 +305,10 @@ export const zhCN: LocaleStrings = {
   table3x3: '3×3 表格',
   footnote: '脚注',
   definitionList: '定义列表',
+  outlineAll: '全部',
+  outlineHeadingsOnly: '仅标题',
+  outlineSearchPlaceholder: '搜索大纲…',
+  outlineNoMatches: '没有匹配项',
 };
 
 export const locales: Record<Language, LocaleStrings> = {

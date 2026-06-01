@@ -908,6 +908,18 @@ function parseMarkdownToHtml(md: string): string {
   let codeLines: string[] = [];
   let headingIndex = 0;
 
+  // Per-kind running counters that assign `id`s to non-heading blocks. The
+  // ids must match the ones the outline panel uses (built in
+  // useMarkdown.buildOutline) so clicks on an outline item scroll to the
+  // matching block in the editor.
+  let tableIndex = 0;
+  let blockquoteIndex = 0;
+  let codeBlockIndex = 0;
+  let listIndex = 0;
+  // Track the kind of the previous list item so a new run of the same
+  // flavour only increments the id counter once (matches buildOutline).
+  let lastListKind: 'task' | 'ul' | 'ol' | null = null;
+
   // Reference link definitions and footnote definitions live at the document
   // level. Collect them up front so inline parsing can resolve them.
   const referenceLinks = new Map<string, { url: string; title?: string }>();
@@ -962,7 +974,11 @@ function parseMarkdownToHtml(md: string): string {
       rows.push(cells.slice(0, headers.length));
       cursor += 1;
     }
-    return { html: renderTable(headers, aligns, rows), next: cursor };
+    const html = renderTable(headers, aligns, rows).replace(
+      '<div class="md-table" data-block="table">',
+      `<div class="md-table" data-block="table" id="block-table-${tableIndex}">`,
+    );
+    return { html, next: cursor };
   };
 
   let i = 0;
@@ -976,10 +992,12 @@ function parseMarkdownToHtml(md: string): string {
         inCodeBlock = true;
         codeLanguage = fenceMatch[1].trim();
         codeLines = [];
+        lastListKind = null;
       } else {
         result.push(
-          `<pre class="md-code-block" data-lang="${codeLanguage}"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
+          `<pre id="block-code-${codeBlockIndex}" class="md-code-block" data-lang="${codeLanguage}"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
         );
+        codeBlockIndex += 1;
         inCodeBlock = false;
         codeLanguage = '';
         codeLines = [];
@@ -998,6 +1016,7 @@ function parseMarkdownToHtml(md: string): string {
     const table = tryParseTable(i);
     if (table) {
       result.push(table.html);
+      tableIndex += 1;
       i = table.next;
       continue;
     }
@@ -1010,6 +1029,7 @@ function parseMarkdownToHtml(md: string): string {
         `<div id="heading-${headingIndex}" class="md-line" data-type="h${hMatch[1].length}">${content}</div>`,
       );
       headingIndex += 1;
+      lastListKind = null;
       i += 1;
       continue;
     }
@@ -1019,8 +1039,11 @@ function parseMarkdownToHtml(md: string): string {
     if (taskMatch) {
       const checked = taskMatch[2].toLowerCase() === 'x';
       const content = parseInlineMarkdown(taskMatch[3], footnotes, referenceLinks);
+      const listId = lastListKind === 'task' ? '' : `block-list-${listIndex}`;
+      if (listId) listIndex += 1;
+      lastListKind = 'task';
       result.push(
-        `<div class="md-line md-task" data-type="task" data-checked="${checked}"><input type="checkbox" ${checked ? 'checked' : ''}><span class="md-task-text">${content}</span></div>`,
+        `<div ${listId ? `id="${listId}" ` : ''}class="md-line md-task" data-type="task" data-checked="${checked}"><input type="checkbox" ${checked ? 'checked' : ''}><span class="md-task-text">${content}</span></div>`,
       );
       i += 1;
       continue;
@@ -1030,8 +1053,11 @@ function parseMarkdownToHtml(md: string): string {
     const ulMatch = line.match(/^[-*]\s+(.*)$/);
     if (ulMatch) {
       const content = parseInlineMarkdown(ulMatch[1], footnotes, referenceLinks);
+      const listId = lastListKind === 'ul' ? '' : `block-list-${listIndex}`;
+      if (listId) listIndex += 1;
+      lastListKind = 'ul';
       result.push(
-        `<div class="md-line" data-type="li" data-list="ul">${content}</div>`,
+        `<div ${listId ? `id="${listId}" ` : ''}class="md-line" data-type="li" data-list="ul">${content}</div>`,
       );
       i += 1;
       continue;
@@ -1041,12 +1067,18 @@ function parseMarkdownToHtml(md: string): string {
     const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
     if (olMatch) {
       const content = parseInlineMarkdown(olMatch[2], footnotes, referenceLinks);
+      const listId = lastListKind === 'ol' ? '' : `block-list-${listIndex}`;
+      if (listId) listIndex += 1;
+      lastListKind = 'ol';
       result.push(
-        `<div class="md-line" data-type="li" data-list="ol" data-num="${olMatch[1]}">${content}</div>`,
+        `<div ${listId ? `id="${listId}" ` : ''}class="md-line" data-type="li" data-list="ol" data-num="${olMatch[1]}">${content}</div>`,
       );
       i += 1;
       continue;
     }
+
+    // Any non-list line breaks the run.
+    lastListKind = null;
 
     // Blockquote. Consecutive `>` lines merge into a single blockquote; we
     // also support a leading `> ` that may be missing on continuation lines
@@ -1077,7 +1109,9 @@ function parseMarkdownToHtml(md: string): string {
       const inner = quoteLines
         .map((q) => (q === '' ? '<br>' : parseInlineMarkdown(q, footnotes, referenceLinks)))
         .join('<br>');
-      result.push(`<blockquote class="md-blockquote">${inner}</blockquote>`);
+      result.push(`<blockquote id="block-quote-${blockquoteIndex}" class="md-blockquote">${inner}</blockquote>`);
+      blockquoteIndex += 1;
+      lastListKind = null;
       continue;
     }
 
@@ -1131,8 +1165,9 @@ function parseMarkdownToHtml(md: string): string {
 
   if (inCodeBlock) {
     result.push(
-      `<pre class="md-code-block" data-lang="${codeLanguage}"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
+      `<pre id="block-code-${codeBlockIndex}" class="md-code-block" data-lang="${codeLanguage}"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`,
     );
+    codeBlockIndex += 1;
   }
 
   // Append a footnote section at the end of the document if any definitions

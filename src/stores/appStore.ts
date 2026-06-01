@@ -4,8 +4,7 @@ import type { FileNode, OutlineItem, AppSettings } from '../types';
 
 export type Language = 'en' | 'zh';
 
-
-
+export type OutlineFilter = 'all' | 'headings';
 
 interface AppStore {
   // Current file
@@ -21,6 +20,8 @@ interface AppStore {
   // Outline
   outline: OutlineItem[];
   activeHeadingId: string | null;
+  outlineFilter: OutlineFilter;
+  outlineSearch: string;
 
   // UI state
   sidebarOpen: boolean;
@@ -47,6 +48,8 @@ interface AppStore {
   toggleFolder: (folderId: string) => void;
   setOutline: (outline: OutlineItem[]) => void;
   setActiveHeading: (id: string | null) => void;
+  setOutlineFilter: (filter: OutlineFilter) => void;
+  setOutlineSearch: (query: string) => void;
   toggleSidebar: () => void;
   toggleOutline: () => void;
   toggleSettings: () => void;
@@ -128,6 +131,8 @@ export const useAppStore = create<AppStore>()(
       expandedFolders: new Set<string>(),
       outline: [],
       activeHeadingId: null,
+      outlineFilter: 'all',
+      outlineSearch: '',
       sidebarOpen: true,
       outlineOpen: true,
       settingsOpen: false,
@@ -183,6 +188,9 @@ export const useAppStore = create<AppStore>()(
       setOutline: (outline) => set({ outline }),
 
       setActiveHeading: (id) => set({ activeHeadingId: id }),
+
+      setOutlineFilter: (filter) => set({ outlineFilter: filter }),
+      setOutlineSearch: (query) => set({ outlineSearch: query }),
 
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 

@@ -13,10 +13,26 @@ export interface FileNode {
 export type { FileNode as FileNodeType };
 
 // Outline/TOC types
+export type OutlineBlockKind =
+  | 'heading'
+  | 'table'
+  | 'blockquote'
+  | 'code-block'
+  | 'list'
+  | 'task-list';
+
+/** A single block in the editor, surfaced in the outline panel. */
 export interface OutlineItem {
   id: string;
+  /** Heading level (1-6) for headings, 1 for other block kinds. */
   level: number;
+  /** What kind of block this is — drives the icon and the toggle filter. */
+  kind: OutlineBlockKind;
+  /** Short preview text (heading text, first table cell, code language, …). */
   text: string;
+  /** Optional sub-line shown muted under the main label. */
+  hint?: string;
+  /** 1-based line number in the source markdown, used for the line locator. */
   line?: number;
 }
 
