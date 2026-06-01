@@ -21,7 +21,9 @@ A **Typora-inspired** WYSIWYG Markdown editor with practical desktop file handli
 
 You can also use ^superscript^ and ~subscript~.
 
-[Link example](https://example.com)
+[Link example](https://example.com), reference-style links like [docs][doc], and auto-links: <https://example.com>.
+
+[doc]: https://example.com "Documentation"
 
 ## Block Elements
 ### Blockquote
@@ -43,10 +45,25 @@ You can also use ^superscript^ and ~subscript~.
 - [x] Completed task
 - [ ] Another todo
 
+### Tables
+| Feature | Status | Notes |
+| :--- | :---: | ---: |
+| Headings | ✅ | Levels 1–6 |
+| Tables | ✅ | GFM with alignment |
+| Footnotes | ✅ | See [^1] |
+| Task list | ✅ | Click to toggle |
+
 ---
 
+## Footnotes
+A claim[^1] deserves a citation, and definitions can be linked too[^syntax].
+
+[^1]: This is the footnote text.
+
+[^syntax]: Markdown reference: <https://commonmark.org>
+
 ## Try It
-Type Markdown below. Common prefixes such as \`#\`, \`-\`, \`1.\`, \`>\`, and \`- [ ]\` convert as you write.
+Type Markdown below. Common prefixes such as \`#\`, \`-\`, \`1.\`, \`>\`, and \`- [ ]\` convert as you write. Right-click for a syntax menu including tables and footnotes.
 `;
 
 const demoFileTree: FileNode[] = [

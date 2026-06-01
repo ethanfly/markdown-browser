@@ -71,6 +71,23 @@ async function main() {
       return (editorElement?.parentElement?.scrollTop || 0) > 0;
     });
 
+    // Verify the demo content exercises the table + footnote parsers: when
+    // the file loads, parseMarkdownToHtml runs against the demo markdown and
+    // the resulting <table> and <section class="md-footnotes"> should land in
+    // the DOM. This is a real end-to-end check of the markdown → HTML render
+    // path (the previous version of this test only verified the inline
+    // pipeline, which never covered tables).
+    await page.waitForFunction(() => {
+      const editorElement = document.querySelector('[data-testid="editor"]');
+      const table = editorElement?.querySelector('.md-table table');
+      const footnoteSection = editorElement?.querySelector('.md-footnotes');
+      return !!table && !!footnoteSection;
+    });
+    const tableText = await page.locator('[data-testid="editor"] .md-table table').textContent();
+    if (!tableText || !/Feature/.test(tableText) || !/Tables/.test(tableText)) {
+      throw new Error(`Demo table did not render expected cells. Got: ${tableText}`);
+    }
+
     await editor.click();
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
     await page.keyboard.press('Backspace');

@@ -92,6 +92,11 @@ export interface LocaleStrings {
   task: string;
   blockquote: string;
   horizontalRule: string;
+  table: string;
+  table2x2: string;
+  table3x3: string;
+  footnote: string;
+  definitionList: string;
 }
 
 export type LocaleKey = keyof LocaleStrings;
@@ -188,6 +193,11 @@ export const enUS: LocaleStrings = {
   task: 'Task',
   blockquote: 'Blockquote',
   horizontalRule: 'Horizontal rule',
+  table: 'Table',
+  table2x2: '2×2 Table',
+  table3x3: '3×3 Table',
+  footnote: 'Footnote',
+  definitionList: 'Definition List',
 };
 
 export const zhCN: LocaleStrings = {
@@ -282,6 +292,11 @@ export const zhCN: LocaleStrings = {
   task: '任务',
   blockquote: '引用',
   horizontalRule: '分隔线',
+  table: '表格',
+  table2x2: '2×2 表格',
+  table3x3: '3×3 表格',
+  footnote: '脚注',
+  definitionList: '定义列表',
 };
 
 export const locales: Record<Language, LocaleStrings> = {

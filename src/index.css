@@ -476,6 +476,7 @@ body {
 
 .md-table table {
   @apply w-full border-collapse;
+  @apply text-sm;
 }
 
 .md-table th {
@@ -483,16 +484,66 @@ body {
   @apply border border-slate-300 dark:border-slate-600;
   @apply px-4 py-2 text-left font-semibold;
   @apply text-slate-800 dark:text-slate-100;
+  @apply align-middle;
 }
 
 .md-table td {
   @apply border border-slate-300 dark:border-slate-600;
   @apply px-4 py-2;
   @apply text-slate-700 dark:text-slate-200;
+  @apply align-top;
 }
 
 .md-table tr:hover td {
   @apply bg-slate-50 dark:bg-slate-800/50;
+}
+
+/* Center- and right-aligned columns get matching header alignment. */
+.md-table th[style*="text-align:center"],
+.md-table td[style*="text-align:center"] {
+  @apply text-center;
+}
+
+.md-table th[style*="text-align:right"],
+.md-table td[style*="text-align:right"] {
+  @apply text-right;
+}
+
+/* Inline content inside table cells: tighten the margin on nested elements so
+ * the cell reads as a tight grid instead of stacking paragraphs. */
+.md-table td > p,
+.md-table th > p {
+  @apply mb-0;
+}
+
+.md-table td pre,
+.md-table th pre {
+  @apply my-0 text-xs;
+}
+
+/* Footnotes block at the bottom of the document. */
+.md-footnotes {
+  @apply mt-12 pt-4;
+  @apply border-t border-slate-200 dark:border-slate-700;
+  @apply text-sm text-slate-600 dark:text-slate-400;
+}
+
+.md-footnotes ol {
+  @apply list-decimal list-outside pl-6;
+}
+
+.md-footnotes .md-footnote-item {
+  @apply mb-1;
+}
+
+.md-footnote-backref {
+  @apply ml-1 text-blue-500 dark:text-blue-400;
+  @apply no-underline hover:underline;
+}
+
+.md-footnote-missing {
+  @apply text-red-500 dark:text-red-400;
+  @apply cursor-help;
 }
 
 /* Abbreviation */
